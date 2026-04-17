@@ -1,0 +1,73 @@
+services:
+  #MLflow tracking server
+  mlflow:
+    #Use a lightweight Python image as the base for the MLflow server
+    image: python:3.11-slim
+    container_name: mlflow_server #Name the container for easier reference in the API service
+    # Install mlflow and curl at container startup and launch the tracking server
+    # Installs mlflow silently then runs at prot 5000, uses an sqllite db for meta data
+    # and then specifies the artifact directory where heavy files are stored
+    command: >
+      bash -c "apt-get update &&
+             apt-get install -y curl &&
+             pip install --quiet mlflow &&
+             mlflow server
+             --host 0.0.0.0
+             --port 5000
+             --backend-store-uri sqlite:///mlflow.db
+             --default-artifact-root /mlflow/artifacts"
+             --disable-security-middleware
+    ports:
+      - "5000:5000" # Expose MLflow UI at http://localhost:5000
+    volumes:
+      # Persist the MLflow database and artifact store on the host
+      - mlflow_data:/mlflow
+    # Ensure the MLflow server is healthy before starting dependent services
+    restart: on-failure
+    # The network configuration to allow communication between the MLflow server and the API service
+    networks:
+      - app_network
+    #Healthcheck to ensure the MLflow server is up and running before the API service tries to connect
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+  #MLflow api
+  api:
+    #Build the API service using the provided Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taxi_tip_api
+    ports:
+      - "8000:8000" #Expose API at http://localhost:8000
+    # The network configuration to allow communication between the API service and the MLflow server
+    networks:
+      - app_network
+    # Set the MLflow tracking URI environment variable to point to the MLflow server container
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - MLFLOW_S3_ENDPOINT_URL=http://mlflow:5000
+    # Ensure the API service waits for the MLflow server to be healthy before starting
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    #Healthcheck to ensure the API service is up and running
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+#Volumes for MLflow data persistence
+volumes:
+  mlflow_data:
+    driver: local
+
+#App Networks
+networks:
+  app_network:
+    driver: bridge

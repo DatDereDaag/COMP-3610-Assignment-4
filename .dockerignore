@@ -1,0 +1,40 @@
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+#Git history
+.git/
+.gitignore
+.gitattributes
+
+#Data files
+*.parquet
+*.csv.gz
+
+#MLflow dta
+mlruns/
+mlartifacts/
+
+# Documentation (not needed at runtime)
+*.md
+docs/
+images/
+ 
+# Temporary files
+tmp/
+temp/
+*.log
+ 
+#Environment files
+.env
+
+#Notebooks
+*.ipynb
+
+# Test files
+test_app.py
+tests/
+.pytest_cache/
