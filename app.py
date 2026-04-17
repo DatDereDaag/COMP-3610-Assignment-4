@@ -43,46 +43,55 @@ async def lifespan(app: FastAPI):
 
     #Loading the neural network from mlflow
     global tip_predictor_model_state
-    try:
-        tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-        mlflow.set_tracking_uri(tracking_uri)
-        client = MlflowClient()
 
-        versions = client.get_latest_versions("taxi-tip-regressor", stages=["None"])
-        latest = versions[0]
+    #This is done so that the docker-compose works
+    #The MLFlow needs to be trained first before the API can work
+    for _ in range(50):
+        try:
+            tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+            mlflow.set_tracking_uri(tracking_uri)
+            client = MlflowClient()
 
-        best_model = mlflow.pytorch.load_model(f"models:/taxi-tip-regressor/{latest.version}") #Loads the latest version of the model registered
-        best_model.eval() #Set to eval mode
+            versions = client.get_latest_versions("taxi-tip-regressor", stages=["None"])
+            latest = versions[0]
 
-        run = client.get_run(latest.run_id)
+            best_model = mlflow.pytorch.load_model(f"models:/taxi-tip-regressor/{latest.version}") #Loads the latest version of the model registered
+            best_model.eval() #Set to eval mode
 
-        tip_predictor_model_state = {
-            'model': best_model,
-            'preprocessor': preprocessor,
-            'version': str(latest.version),
-            'model_name': 'taxi-tip-regressor',
-            'features': [
-                "passenger_count", "trip_distance", "RatecodeID", "payment_type",
-                "fare_amount", "extra", "mta_tax", "tolls_amount",
-                "improvement_surcharge", "total_amount", "congestion_surcharge",
-                "Airport_fee", "trip_duration_minutes", "trip_speed_mph",
-                "log_trip_distance", "fare_per_mile", "fare_per_minute",
-                "pickup_borough_*", "dropoff_borough_*",
-                "VendorID", "PULocationID", "DOLocationID",
-                "pickup_hour", "pickup_day_of_week", "is_weekend",
-            ],
-            'metrics': {
-                    "MAE":  run.data.metrics.get("mae"),
-                    "RMSE": run.data.metrics.get("rmse"),
-                    "R2":   run.data.metrics.get("r2"),
+            run = client.get_run(latest.run_id)
+
+            tip_predictor_model_state = {
+                'model': best_model,
+                'preprocessor': preprocessor,
+                'version': str(latest.version),
+                'model_name': 'taxi-tip-regressor',
+                'features': [
+                    "passenger_count", "trip_distance", "RatecodeID", "payment_type",
+                    "fare_amount", "extra", "mta_tax", "tolls_amount",
+                    "improvement_surcharge", "total_amount", "congestion_surcharge",
+                    "Airport_fee", "trip_duration_minutes", "trip_speed_mph",
+                    "log_trip_distance", "fare_per_mile", "fare_per_minute",
+                    "pickup_borough_*", "dropoff_borough_*",
+                    "VendorID", "PULocationID", "DOLocationID",
+                    "pickup_hour", "pickup_day_of_week", "is_weekend",
+                ],
+                'metrics': {
+                        "MAE":  run.data.metrics.get("mae"),
+                        "RMSE": run.data.metrics.get("rmse"),
+                        "R2":   run.data.metrics.get("r2"),
+                }
             }
-        }
 
-    except Exception as e:
-        raise RuntimeError(f"Model loading failed: {e}")
-
-    print("Neural Network Model has been loaded successfully")
+            print("Neural Network Model has been loaded successfully")
+            break
+        except Exception as e:
+            print(f"Model not ready yet: {e}")
+            tip_predictor_model_state = None
+            time.sleep(30)
     
+    if not tip_predictor_model_state:
+        raise RuntimeError("MLflow model not available after retries")
+
     yield
     print("Shutting down...")
 

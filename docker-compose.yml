@@ -42,6 +42,7 @@ services:
     depends_on:
       mlflow:
         condition: service_healthy
+    restart: on-failure
     #Healthcheck to ensure the API service is up and running
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

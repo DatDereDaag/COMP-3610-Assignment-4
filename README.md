@@ -110,25 +110,45 @@ venv\Scripts\activate           # Windows
 pip install -r requirements.txt
 ```
 
-### 3. Start the MLflow tracking server
+### 3. Start Docker Services
 
 ```bash
-mlflow server --host 0.0.0.0 --port 5000
+docker compose up --build
 ```
 
-### 4. Train / register the model
+### 4. Run Experiment Notebook
 
-Run the cells in `assignment4.ipynb` from top to bottom. This will:
-
-- Download the NYC Taxi dataset
-- Train and evaluate at least two models
-- Log runs to MLflow and register the best model as `taxi-tip-regressor`
-- Save `models/preprocessor.joblib`
-
-### 5. Start the API
+### 5. Make a prediction
 
 ```bash
-uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "VendorID": 1,
+    "RatecodeID": 1,
+    "PULocationID": 237,
+    "DOLocationID": 140,
+    "payment_type": 1,
+    "passenger_count": 2,
+    "trip_distance": 3.5,
+    "fare_amount": 12.50,
+    "extra": 0.5,
+    "mta_tax": 0.5,
+    "tolls_amount": 0.0,
+    "improvement_surcharge": 0.3,
+    "total_amount": 15.80,
+    "congestion_surcharge": 2.5,
+    "Airport_fee": 0.0,
+    "trip_duration_mins": 18.0,
+    "pickup_hour": 14,
+    "pickup_day_of_week": 2
+  }'
+```
+
+### 6. Shut down
+
+```bash
+docker compose down
 ```
 
 ---

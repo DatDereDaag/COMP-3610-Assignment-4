@@ -1,4 +1,0 @@
-The API can not work as the MLFlow server loads without any
-pre-existing experiment data, howver the stand alone dockerfile
-for the api works as expected when using the local data when
-MLFlow is hosted on local host.

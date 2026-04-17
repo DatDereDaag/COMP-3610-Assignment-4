@@ -163,7 +163,7 @@ def test_missing_field_single_prediction(client):
 
     assert response.status_code == 422
 
-def test_invalid_field_single_prediction(client):
+def test_invalid_type_single_prediction(client):
     #Tests with fare amount as string
     response = client.post("/predict", json={
         "VendorID": 1,
@@ -187,7 +187,11 @@ def test_invalid_field_single_prediction(client):
         }
     )
 
-    assert response.status_code == 422
+    assert response.status_code == 200
+    data= response.json()
+    assert "predicted_tip_amount" in data
+    assert "prediction_id" in data
+    assert "model_version" in data
 
 def test_invalid_field_single_prediction(client):
     #Tests with out of range fare amount (<0)
